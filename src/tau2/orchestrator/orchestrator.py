@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Optional
 
+from litellm import BadRequestError, ContextWindowExceededError
 from loguru import logger
 
 from tau2.agent.base import AgentError, BaseAgent, is_valid_agent_history_message
@@ -394,7 +395,17 @@ class Orchestrator:
         start = time.perf_counter()
         self.initialize()
         while not self.done:
-            self.step()
+            try:
+                self.step()
+            except ContextWindowExceededError as e:
+                logger.error(f"Context window exceeded: {str(e)}")
+                self.done = True
+                self.termination_reason = TerminationReason.CONTEXT_EXCEEDED
+            except BadRequestError as e:
+                logger.error(f"API Error: {str(e)}")
+                self.done = True
+                self.termination_reason = TerminationReason.API_ERROR
+
             # Checking for maximum steps and errors only if the last message is not to the environment
             if self.to_role == Role.ENV:
                 continue

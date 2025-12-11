@@ -321,6 +321,8 @@ class TerminationReason(str, Enum):
     TOO_MANY_ERRORS = "too_many_errors"
     AGENT_ERROR = "agent_error"
     USER_ERROR = "user_error"
+    CONTEXT_EXCEEDED = "context_exceeded"
+    API_ERROR = "api_error"
 
 
 class SimulationRun(BaseModel):

@@ -3,10 +3,12 @@ import re
 from typing import Any, Optional
 
 import litellm
+# litellm._turn_on_debug()
 from litellm import completion, completion_cost
 from litellm.caching.caching import Cache
 from litellm.main import ModelResponse, Usage
 from loguru import logger
+import random
 
 from tau2.config import (
     DEFAULT_LLM_CACHE_TYPE,
@@ -95,7 +97,8 @@ def get_response_cost(response: ModelResponse) -> float:
     try:
         cost = completion_cost(completion_response=response)
     except Exception as e:
-        logger.error(e)
+        if 'mapped yet' not in str(e).lower():
+            logger.error(e)
         return 0.0
     return cost
 
@@ -205,6 +208,11 @@ def generate(
     tools = [tool.openai_schema for tool in tools] if tools else None
     if tools and tool_choice is None:
         tool_choice = "auto"
+
+    if 'azure' in model:
+        # TODO: CHECK
+        model = random.choice(["azure/gpt-4.1-endpoint-5", "azure/gpt-4.1-endpoint-6"])
+
     try:
         response = completion(
             model=model,
@@ -213,9 +221,17 @@ def generate(
             tool_choice=tool_choice,
             **kwargs,
         )
+    except litellm.ContextWindowExceededError as e:
+        logger.error(f"Context window exceeded: {e}")
+        # Re-raise with a specific type for orchestrator to catch
+        raise litellm.ContextWindowExceededError(str(e),model.split("/")[1],model.split("/")[0]) from e
+    
     except Exception as e:
+        if 'limited' in str(e).lower():
+            print('>> Getting Rate Limited!')
         logger.error(e)
         raise e
+    
     cost = get_response_cost(response)
     usage = get_response_usage(response)
     response = response.choices[0]

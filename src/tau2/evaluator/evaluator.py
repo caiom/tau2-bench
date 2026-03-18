@@ -31,6 +31,7 @@ def evaluate_simulation(
     if simulation.termination_reason not in {
         TerminationReason.AGENT_STOP,
         TerminationReason.USER_STOP,
+        TerminationReason.CONTEXT_WINDOW_EXCEEDED,
     }:
         return RewardInfo(
             reward=0.0,
